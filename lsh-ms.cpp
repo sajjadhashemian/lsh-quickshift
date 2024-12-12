@@ -1,12 +1,10 @@
 // clang++ -std=c++17 -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -lfaiss -Wl,-rpath,$CONDA_PREFIX/lib -o quick_shift lsh-ms.cpp
 
-#include <bits/stdc++.h>
-#include <faiss/IndexFlat.h>
-#include <faiss/IndexIVFFlat.h>
-#include <faiss/Clustering.h>
+#include "common.h"
 using namespace std;
 
 // srand(static_cast<unsigned>(1337));
+
 
 class QuickShift
 {
@@ -112,12 +110,7 @@ public:
 		return clusters;
 	}
 
-	inline bool cointoss(double n)
-	{
-		int randomValue = rand();
-		double threshold = (RAND_MAX / sqrt(n));
-		return (bool)(randomValue < threshold);
-	}
+
 
 	vector<int> fast_fit(const vector<vector<float>> &data)
 	{
