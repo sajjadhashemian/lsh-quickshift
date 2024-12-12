@@ -1,107 +1,110 @@
+#ifndef QUICKSHIFT_H
+#define QUICKSHIFT_H
+
 #include "common.h"
 #include "kde.h"
 
 class QuickShift
 {
+private:
+	int k;									// Number of neighbors for k-NN search
+	int n_bits;								// Number of bits for LSH
+	int dim;								// Dimension of the data
+	int n;									// Number of the data
+
 public:
 	QuickShift(int k_neighbors) : k(k_neighbors){}
-	std::vector<int> fit(const std::vector<std::vector<float>> &data, int n_bits)
+	
+	vector<int> fit(const vector<vector<float>> &data, int n_bits = 128)
 	{
-		int n = data.size();
-		int dim = data[0].size();
+		n = data.size(); dim = data[0].size();
 
 		// Prepare data for Faiss
 		float *dataset = new float[n * dim];
 		for (int i = 0; i < n; ++i)
-		{
 			for (int d = 0; d < dim; ++d)
-			{
 				dataset[i * dim + d] = data[i][d];
-			}
-		}
 
 		// Build Faiss index
-		faiss::IndexFlatL2 index(dim); // Flat index for exact nearest neighbor search
+		faiss::IndexFlatL2 index(dim);
 		index.add(n, dataset);
 
 		// Compute density for each point using KDE
 		KDE kde(dim, n_bits);
 		kde.fit(data);
 
-		std::vector<float> densities(n, 0.0);
-		std::vector<faiss::idx_t> most_dense_neighbors(n, -1); // Use faiss::idx_t for labels
+		vector<float> density(n, 0.0);
+		vector<faiss::idx_t> parents(n, -1);
 
 		// Find k-nearest neighbors for each point
-		faiss::idx_t *labels = new faiss::idx_t[k]; // Use faiss::idx_t for labels
+		faiss::idx_t *labels = new faiss::idx_t[k];
 		float *distances = new float[k];
+		float mn=1000;
+		float mx=-1;
 		for (int i = 0; i < n; ++i)
 		{
 			index.search(1, &dataset[i * dim], k, distances, labels);
 
 			// Compute density using KDE estimator
-			std::vector<float> query_point(dim);
+			vector<float> query_point(dim);
 			for (int d = 0; d < dim; ++d)
-			{
 				query_point[d] = data[i][d];
-			}
-			densities[i] = kde.query(query_point, k);
+			density[i] = kde.query(query_point, k*2);
+			cout<<density[i]<<" ";
+			mx=max(density[i],mx);
+			mn=min(mn, density[i]);
 		}
+		cerr<<mn<<", "<<mx<<endl;
+		cout<<endl;
 
-		// Find the most dense neighbor for each point
+		// Assign each point to the nearest neighbor with higher density
 		for (int i = 0; i < n; ++i)
 		{
 			index.search(1, &dataset[i * dim], k, distances, labels);
 
-			// Finding the most dense neighbor (excluding itself)
-			float max_density = -1.0;
-			faiss::idx_t most_dense_neighbor = -1;
+			// Find the nearest neighbor with highest density
+			faiss::idx_t heaviest_neighbor = i;
+			float min_distance = numeric_limits<float>::max();
 			for (int j = 0; j < k; ++j)
 			{
 				faiss::idx_t neighbor = labels[j];
-				if (neighbor != i && densities[neighbor] > max_density)
+				if (density[neighbor] > density[heaviest_neighbor])
 				{
-					max_density = densities[neighbor];
-					most_dense_neighbor = neighbor;
+					min_distance = distances[j];
+					heaviest_neighbor = neighbor;
 				}
 			}
-
-			// If the current point is the most dense, assign it to itself
-			if (densities[i] > max_density)
-			{
-				max_density = densities[i];
-				most_dense_neighbor = i;
-			}
-			most_dense_neighbors[i] = most_dense_neighbor;
+			parents[i] = heaviest_neighbor;
 		}
 
-		// Assign clusters based on the most dense neighbors
-		std::vector<int> clusters(n, -1);
+		// Assign clusters based on the parent structure
+		vector<int> clusters(n, -1);
 		int cluster_id = 0;
 		for (int i = 0; i < n; ++i)
 		{
 			faiss::idx_t current = i;
-			while (most_dense_neighbors[current] != current)
-				current = most_dense_neighbors[current];
+			while (parents[current] != current)
+				current = parents[current];
 			if (clusters[current] == -1)
+				cerr<<current<<": "<<density[current]<<endl,
+				cout<<current<<" ",
 				clusters[current] = cluster_id++;
 		}
-
+		cout<<endl;
 		// Propagate cluster assignments
 		for (int i = 0; i < n; ++i)
-		{
 			if (clusters[i] == -1)
 			{
 				faiss::idx_t current = i;
-				faiss::idx_t par = most_dense_neighbors[current];
+				faiss::idx_t par = parents[current];
 				while (current != par)
 				{
 					current = par;
-					par = most_dense_neighbors[par];
+					par = parents[par];
 				}
 				clusters[i] = clusters[current];
-				most_dense_neighbors[i] = current;
+				parents[i] = current;
 			}
-		}
 
 		delete[] dataset;
 		delete[] labels;
@@ -109,6 +112,6 @@ public:
 
 		return clusters;
 	}
-private:
-	int k; // Number of neighbors for k-NN search
 };
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef KDE_H
+#define KDE_H
+
 #include "common.h"
 
 class KDE
@@ -14,7 +17,7 @@ private:
 	{
 		double dist_sq = 0.0;
 		for (size_t i = 0; i < p.size(); ++i)
-			dist_sq += (p[i] - q[i]);
+			dist_sq += (p[i] - q[i]) * (p[i] - q[i]);
 		return exp(-dist_sq / __sigma);
 	}
 
@@ -82,9 +85,11 @@ public:
 			kde += weight;
 			__indices[i]=idx;
 		}
-		kde /= dataset.size();
+		// kde/=dataset.size();
 
 		delete[] query_data;
 		return kde;
 	}
 };
+
+#endif
