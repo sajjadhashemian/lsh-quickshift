@@ -1,3 +1,5 @@
+// g++ -std=c++17 -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -lfaiss -Wl,-rpath,$CONDA_PREFIX/lib -o qs lsh-qs.cpp
+
 #include "common.h"
 #include "quickshift.h"
 
@@ -25,7 +27,7 @@ vector<vector<float>> generate_data(int n, int dim)
 int main()
 {
 	// Generate data
-	int n = 5000; // Number of points per cluster
+	int n = 100000; // Number of points per cluster
 	int dim = 2;   // Dimensionality
 	vector<vector<float>> data = generate_data(n, dim);
 	// cout<<"Generated Data!"<<endl;
@@ -39,8 +41,8 @@ int main()
 	// QuickShift qs(sqrt(n));
 	QuickShift qs(sqrt(2*n)*log2(2*n));
 	// QuickShift qs(50);
-	auto x = qs.fit(data);
-	// auto x = qs.fast_fit(data);
+	// auto x = qs.fit(data);
+	auto x = qs.fast_fit(data);
 	for (int y : x)
 		cout << y << " ";
 	cout << endl;

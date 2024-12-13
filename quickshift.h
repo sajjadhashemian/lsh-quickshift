@@ -50,12 +50,12 @@ public:
 			for (int d = 0; d < dim; ++d)
 				query_point[d] = data[i][d];
 			density[i] = kde.query(query_point, k*2);
-			cout<<density[i]<<" ";
-			mx=max(density[i],mx);
-			mn=min(mn, density[i]);
+			// cout<<density[i]<<" ";
+			// mx=max(density[i],mx);
+			// mn=min(mn, density[i]);
 		}
-		cerr<<mn<<", "<<mx<<endl;
-		cout<<endl;
+		// cerr<<mn<<", "<<mx<<endl;
+		// cout<<endl;
 
 		// Assign each point to the nearest neighbor with higher density
 		for (int i = 0; i < n; ++i)
@@ -86,11 +86,11 @@ public:
 			while (parents[current] != current)
 				current = parents[current];
 			if (clusters[current] == -1)
-				cerr<<current<<": "<<density[current]<<endl,
-				cout<<current<<" ",
+				// cerr<<current<<": "<<density[current]<<endl,
+				// cout<<current<<" ",
 				clusters[current] = cluster_id++;
 		}
-		cout<<endl;
+		// cout<<endl;
 		// Propagate cluster assignments
 		for (int i = 0; i < n; ++i)
 			if (clusters[i] == -1)
@@ -112,6 +112,75 @@ public:
 
 		return clusters;
 	}
+
+	vector<int> fast_fit(const vector<vector<float>> &data)
+	{
+		int n = data.size();
+		int dim = data[0].size();
+
+		// sample sqrt(n) vector
+		vector<vector<float>> sample;
+		vector<int> index_sample;
+		for (int i = 0; i < n; i++)
+			if (__cointoss(n))
+			{
+				sample.push_back(data[i]);
+				index_sample.push_back(i);
+			}
+		int m = sample.size();
+		int _k = sqrt(m)*log(m);
+		// cerr << sample.size() << " " << _k << endl;
+
+		QuickShift qs(_k);
+		vector<int> result = qs.fit(sample);
+		vector<int> clusters(n, -1);
+		for (int i = 0; i < index_sample.size(); ++i)
+			clusters[index_sample[i]] = result[i];
+
+		// Prepare data for Faiss
+		float *sampleset = new float[m * dim];
+		for (int i = 0; i < m; ++i)
+			for (int d = 0; d < dim; ++d)
+				sampleset[i * dim + d] = data[index_sample[i]][d];
+		float *dataset = new float[n * dim];
+		for (int i = 0; i < n; ++i)
+			for (int d = 0; d < dim; ++d)
+				dataset[i * dim + d] = data[i][d];
+
+
+		// Build Faiss index
+		faiss::IndexFlatL2 index(dim); // Flat index for exact nearest neighbor search
+		index.add(m, sampleset);
+
+		// Find k-nearest neighbors for each point and Assigning clusters
+		faiss::idx_t *labels = new faiss::idx_t[k]; // Use faiss::idx_t for labels
+		float *distances = new float[k];
+		for (int i = 0; i < n; ++i)
+		{
+			index.search(1, &dataset[i * dim], _k, distances, labels);
+			float min_dist = 1e30;
+			int min_index = -1;
+			for (int j = 0; j < _k; ++j)
+			{
+				faiss::idx_t neighbor = labels[j];
+				float dist = distances[j];
+				if (neighbor != i && dist < min_dist)
+				{
+					min_dist = min_dist;
+					min_index = neighbor;
+				}
+			}
+			clusters[i] = result[min_index];
+		}
+
+		delete[] dataset;
+		delete[] sampleset;
+		delete[] labels;
+		delete[] distances;
+
+		return clusters;
+	}
+
 };
 
 #endif
