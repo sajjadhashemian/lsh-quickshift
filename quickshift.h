@@ -51,12 +51,7 @@ public:
 			for (int d = 0; d < dim; ++d)
 				query_point[d] = data[i][d];
 			density[i] = kde.query(query_point, k * 2);
-			// cout<<density[i]<<" ";
-			// mx=max(density[i],mx);
-			// mn=min(mn, density[i]);
 		}
-		// cerr<<mn<<", "<<mx<<endl;
-		// cout<<endl;
 
 		// Assign each point to the nearest neighbor with higher density
 		for (int i = 0; i < n; ++i)
@@ -87,11 +82,9 @@ public:
 			while (parents[current] != current)
 				current = parents[current];
 			if (clusters[current] == -1)
-				// cerr<<current<<": "<<density[current]<<endl,
-				// cout<<current<<" ",
 				clusters[current] = cluster_id++;
 		}
-		// cout<<endl;
+		
 		// Propagate cluster assignments
 		for (int i = 0; i < n; ++i)
 			if (clusters[i] == -1)
@@ -130,10 +123,8 @@ public:
 				index_sample.push_back(i);
 				sample_index_set.insert(i);
 			}
-		// cerr << sample.size() << endl;
-
+		
 		// Adding ~sqrt(n) most dense data to sample for initial clustering
-		cerr<<"HERE: "<<sample.size()<<endl;
 		KDE kde(dim, n_bits);
 		kde.fit(sample);
 		vector<pair<double, int>> density_sorted;
@@ -141,15 +132,11 @@ public:
 		for (int i = 0; i < n; i++)
 		{
 			double rho = kde.query(data[i], k);
-			// cerr<<rho<<endl;
 			density_sorted.push_back({rho, i});
 			density.push_back(rho);
 		}
 		sort(density_sorted.begin(), density_sorted.end(), greater<pair<double, int>>());
 
-		// sample.clear();
-		// index_sample.clear();
-		// sample_index_set.clear();
 		for (int i = 0; i < sqrt(n); i++)
 		{
 			pair<double, int> x = density_sorted[i];
@@ -159,14 +146,11 @@ public:
 				sample.push_back(data[idx]);
 				index_sample.push_back(idx);
 				sample_index_set.insert(idx);
-				// cerr<<"HERE"<<endl;
 			}
 		}
 		int m = sample.size();
 		int _k = sqrt(m)*log(m);
-		// _k = min(_k, (int)m/3);
-		cerr << n << " " << k << ": " << m << " " << _k << endl;
-
+		
 		// Cluster sampled data
 		QuickShift qs(_k);
 		vector<int> result = qs.fit(sample);
@@ -185,12 +169,10 @@ public:
 				dataset[i * dim + d] = data[i][d];
 
 		// Build Faiss index
-		faiss::IndexFlatL2 index(dim); // Flat index for exact nearest neighbor search
+		faiss::IndexFlatL2 index(dim);
 		index.add(m, sampleset);
 
-		// Find k-nearest neighbors for each point and Assigning clusters
-		// Two tests: 1. assigning to the closest vector; 2. assigning to the most dense neighbor;
-
+		// Find k-nearest neighbors for each point to assigning clusters
 		faiss::idx_t *labels = new faiss::idx_t[_k];
 		float *distances = new float[_k];
 		for (int i = 0; i < n; ++i)
@@ -207,7 +189,6 @@ public:
 					float dist = distances[j];
 					double rho = density[neighbor];
 					if (neighbor != i && max_dens < rho)
-					// if (neighbor != i && min_dist > dist && density[i] < density[neighbor])
 					{
 						min_dist = min_dist;
 						max_dens = rho;
