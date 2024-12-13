@@ -8,8 +8,8 @@ vector<vector<float>> generate_data(int n, int dim)
 {
 	vector<vector<float>> data(2 * n, vector<float>(dim));
 	default_random_engine generator;
-	normal_distribution<float> dist0(-90.0, 5);
-	normal_distribution<float> dist1(-90.0, 5);
+	normal_distribution<float> dist0(-25.0, 8);
+	normal_distribution<float> dist1(-25.0, 8);
 	normal_distribution<float> dist2(0.0, 5);
 	normal_distribution<float> dist3(0.0, 5);
 
@@ -27,7 +27,7 @@ vector<vector<float>> generate_data(int n, int dim)
 int main()
 {
 	// Generate data
-	int n = 100000; // Number of points per cluster
+	int n = 1000; // Number of points per cluster
 	int dim = 2;   // Dimensionality
 	vector<vector<float>> data = generate_data(n, dim);
 	// cout<<"Generated Data!"<<endl;
@@ -39,10 +39,11 @@ int main()
 	}
 
 	// QuickShift qs(sqrt(n));
-	QuickShift qs(sqrt(2*n)*log2(2*n));
+	cerr<<sqrt(2*n)<<endl;
+	QuickShift qs(sqrt(2*n)*log(2*n));
 	// QuickShift qs(50);
-	// auto x = qs.fit(data);
-	auto x = qs.fast_fit(data);
+	auto x = qs.fit(data);
+	// auto x = qs.fast_fit(data);
 	for (int y : x)
 		cout << y << " ";
 	cout << endl;
