@@ -18,12 +18,12 @@ private:
 		double dist_sq = 0.0;
 		for (size_t i = 0; i < p.size(); ++i)
 			dist_sq += (p[i] - q[i]) * (p[i] - q[i]);
-		return exp(-dist_sq / __sigma);
+		return exp(-dist_sq / (__sigma * p.size() * p.size()));
 	}
 
 public:
 	// Constructor
-	KDE(int dimension, int bits, double s = 2) : d(dimension), n_bits(bits), __sigma(s), index(nullptr) {}
+	KDE(int dimension, int bits, double s = 1) : d(dimension), n_bits(bits), __sigma(s), index(nullptr) {}
 
 	// Destructor
 	~KDE()
@@ -61,7 +61,7 @@ public:
 	{
 		if (!index)
 		{
-			cerr << "Error: LSH index not initialized. Call preprocess() first." << endl;
+			cerr << "Error: LSH index not initialized. Call fit() first." << endl;
 			return 0.0;
 		}
 

@@ -9,16 +9,15 @@ vector<vector<float>> generate_data(int n, int dim)
 	vector<vector<float>> data(2 * n, vector<float>(dim));
 	default_random_engine generator;
 	normal_distribution<float> dist0(-25.0, 8);
-	normal_distribution<float> dist1(-25.0, 8);
-	normal_distribution<float> dist2(0.0, 5);
-	normal_distribution<float> dist3(0.0, 5);
+	normal_distribution<float> dist1(0.0, 5);
 
 	for (int i = 0; i < n; ++i)
 	{
-		data[i][0] = dist0(generator);
-		data[i][1] = dist1(generator);
-		data[n + i][0] = dist2(generator);
-		data[n + i][1] = dist3(generator);
+		for (int d = 0; d < dim; d++)
+		{
+			data[i][d] = dist0(generator);
+			data[n + i][d] = dist1(generator);
+		}
 	}
 
 	return data;
@@ -27,8 +26,9 @@ vector<vector<float>> generate_data(int n, int dim)
 int main()
 {
 	// Generate data
-	int n = 1000; // Number of points per cluster
-	int dim = 2;   // Dimensionality
+	int n = 10000; // Number of points per cluster
+	cin >> n;
+	int dim = 2; // Dimensionality
 	vector<vector<float>> data = generate_data(n, dim);
 	// cout<<"Generated Data!"<<endl;
 	for (int i = 0; i < 2 * n; i++)
@@ -39,11 +39,12 @@ int main()
 	}
 
 	// QuickShift qs(sqrt(n));
-	cerr<<sqrt(2*n)<<endl;
-	QuickShift qs(sqrt(2*n)*log(2*n));
+	// cerr << sqrt(2 * n) * log2(2 * n) << endl;
+	// int k;cin>>k;
+	QuickShift qs(log(2 * n) * log(2 * n)* 5);
 	// QuickShift qs(50);
-	auto x = qs.fit(data);
-	// auto x = qs.fast_fit(data);
+	// auto x = qs.fit(data);
+	auto x = qs.fast_fit(data);
 	for (int y : x)
 		cout << y << " ";
 	cout << endl;

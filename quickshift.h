@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "kde.h"
+#include "dsu.h"
 
 class QuickShift
 {
@@ -35,7 +36,7 @@ public:
 		kde.fit(data);
 
 		vector<float> density(n, 0.0);
-		vector<faiss::idx_t> parents(n, -1);
+		DSU dsu(n);
 
 		// Find k-nearest neighbors for each point
 		faiss::idx_t *labels = new faiss::idx_t[k];
@@ -58,7 +59,7 @@ public:
 		{
 			index.search(1, &dataset[i * dim], k, distances, labels);
 
-			// Find the nearest neighbor with highest density
+			// Find the neighbor with highest density
 			faiss::idx_t heaviest_neighbor = i;
 			float min_distance = numeric_limits<float>::max();
 			for (int j = 0; j < k; ++j)
@@ -70,35 +71,41 @@ public:
 					heaviest_neighbor = neighbor;
 				}
 			}
-			parents[i] = heaviest_neighbor;
+			dsu.union_sets(i, heaviest_neighbor);
 		}
 
 		// Assign clusters based on the parent structure
 		vector<int> clusters(n, -1);
 		int cluster_id = 0;
+		map<int, pair<int, double>> mp;
 		for (int i = 0; i < n; ++i)
 		{
-			faiss::idx_t current = i;
-			while (parents[current] != current)
-				current = parents[current];
-			if (clusters[current] == -1)
-				clusters[current] = cluster_id++;
+			int parent = dsu.find_set(i);
+			if (clusters[parent] == -1)
+			{
+				mp[cluster_id]={-1,0};
+				clusters[parent] = cluster_id++;
+			}
 		}
-		
+
 		// Propagate cluster assignments
 		for (int i = 0; i < n; ++i)
+		{
 			if (clusters[i] == -1)
-			{
-				faiss::idx_t current = i;
-				faiss::idx_t par = parents[current];
-				while (current != par)
-				{
-					current = par;
-					par = parents[par];
-				}
-				clusters[i] = clusters[current];
-				parents[i] = current;
-			}
+				clusters[i]=clusters[dsu.find_set(i)];
+			pair<int, double> x=mp[clusters[i]];
+			if(density[i]>x.second)
+				mp[clusters[i]]={i, density[i]};
+		}
+		for(int i=0;i<cluster_id;i++)
+		{
+			int idx = mp[i].first;
+			for(int d=0;d<dim;d++)
+				// cerr<<data[idx][j]<<" ",
+				cout<<data[idx][d]<<" ";
+			// cerr<<endl;
+		}
+		cout<<endl;
 
 		delete[] dataset;
 		delete[] labels;
@@ -127,13 +134,13 @@ public:
 		// Adding ~sqrt(n) most dense data to sample for initial clustering
 		KDE kde(dim, n_bits);
 		kde.fit(sample);
-		vector<pair<double, int>> density_sorted;
-		vector<double> density;
+		vector<pair<double, int>> density_sorted(n);
+		vector<double> density(n);
 		for (int i = 0; i < n; i++)
 		{
 			double rho = kde.query(data[i], k);
-			density_sorted.push_back({rho, i});
-			density.push_back(rho);
+			density_sorted[i]={rho, i};
+			density[i]=rho;
 		}
 		sort(density_sorted.begin(), density_sorted.end(), greater<pair<double, int>>());
 
@@ -149,8 +156,8 @@ public:
 			}
 		}
 		int m = sample.size();
-		int _k = sqrt(m)*log(m);
-		
+		int _k = log2(m)*log2(m);
+		cerr<< m << " " << _k <<endl;
 		// Cluster sampled data
 		QuickShift qs(_k);
 		vector<int> result = qs.fit(sample);
