@@ -1,2 +1,2 @@
-# mean-shift
-Developing a Faster Mean-Shift Clustering Algorithm Using Locality-Sensitive Hashing and Relation Graphs
+# LSH-based implementation of QuickShift 
+Developing a Faster QuickShift Clustering Algorithm Using Locality-Sensitive Hashing
