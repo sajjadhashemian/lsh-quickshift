@@ -12,9 +12,10 @@ private:
 	int n_bits; // Number of bits for LSH
 	int dim;	// Dimension of the data
 	int n;		// Number of the data
+	int _k;
 
 public:
-	QuickShift(int k_neighbors) : k(k_neighbors) {}
+	QuickShift(int k_neighbors, int _k_neighbors = 30) : k(k_neighbors), _k(_k_neighbors) {}
 
 	vector<int> fit(const vector<vector<float>> &data, int n_bits = 128)
 	{
@@ -97,15 +98,15 @@ public:
 			if(density[i]>x.second)
 				mp[clusters[i]]={i, density[i]};
 		}
-		for(int i=0;i<cluster_id;i++)
-		{
-			int idx = mp[i].first;
-			for(int d=0;d<dim;d++)
-				// cerr<<data[idx][j]<<" ",
-				cout<<data[idx][d]<<" ";
-			// cerr<<endl;
-		}
-		cout<<endl;
+		// for(int i=0;i<cluster_id;i++)
+		// {
+		// 	int idx = mp[i].first;
+		// 	for(int d=0;d<dim;d++)
+		// 		// cerr<<data[idx][j]<<" ",
+		// 		cout<<data[idx][d]<<" ";
+		// 	// cerr<<endl;
+		// }
+		// cout<<endl;
 
 		delete[] dataset;
 		delete[] labels;
@@ -141,6 +142,7 @@ public:
 			double rho = kde.query(data[i], k);
 			density_sorted[i]={rho, i};
 			density[i]=rho;
+			// cerr<< rho <<endl;
 		}
 		sort(density_sorted.begin(), density_sorted.end(), greater<pair<double, int>>());
 
@@ -156,8 +158,9 @@ public:
 			}
 		}
 		int m = sample.size();
-		int _k = log2(m)*log2(m);
-		cerr<< m << " " << _k <<endl;
+		// int _k = log(m)*log(m);
+		// cerr<< m << " " << _k <<endl;
+
 		// Cluster sampled data
 		QuickShift qs(_k);
 		vector<int> result = qs.fit(sample);

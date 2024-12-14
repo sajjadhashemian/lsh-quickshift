@@ -1,4 +1,4 @@
-// g++ -std=c++17 -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -lfaiss -Wl,-rpath,$CONDA_PREFIX/lib -o qs lsh-qs.cpp
+// g++ -std=c++17 -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -lfaiss -Wl,-rpath,$CONDA_PREFIX/lib -o test test.cpp
 
 #include "common.h"
 #include "quickshift.h"
@@ -27,8 +27,8 @@ int main()
 {
 	// Generate data
 	int n = 10000; // Number of points per cluster
-	cin >> n;
-	int dim = 2; // Dimensionality
+	int dim = 50; // Dimensionality
+	cin >> n >> dim;
 	vector<vector<float>> data = generate_data(n, dim);
 	// cout<<"Generated Data!"<<endl;
 	for (int i = 0; i < 2 * n; i++)
@@ -41,7 +41,7 @@ int main()
 	// QuickShift qs(sqrt(n));
 	// cerr << sqrt(2 * n) * log2(2 * n) << endl;
 	// int k;cin>>k;
-	QuickShift qs(log(2 * n) * log(2 * n)* 5);
+	QuickShift qs(log(2 * n) * log(2 * n));
 	// QuickShift qs(50);
 	// auto x = qs.fit(data);
 	auto x = qs.fast_fit(data);

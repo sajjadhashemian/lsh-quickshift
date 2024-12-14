@@ -15,15 +15,15 @@ private:
 	// Gaussian kernel function
 	double gaussian_kernel(const vector<float> &p, const vector<float> &q)
 	{
-		double dist_sq = 0.0;
+		double dist_sq = 0.0, dim = d;
 		for (size_t i = 0; i < p.size(); ++i)
 			dist_sq += (p[i] - q[i]) * (p[i] - q[i]);
-		return exp(-dist_sq / (__sigma * p.size() * p.size()));
+		return exp(-dist_sq / (__sigma * d * d));
 	}
 
 public:
 	// Constructor
-	KDE(int dimension, int bits, double s = 1) : d(dimension), n_bits(bits), __sigma(s), index(nullptr) {}
+	KDE(int dimension, int bits, double s = 2) : d(dimension), n_bits(bits), __sigma(s), index(nullptr) {}
 
 	// Destructor
 	~KDE()
