@@ -146,7 +146,10 @@ public:
 		}
 		sort(density_sorted.begin(), density_sorted.end(), greater<pair<double, int>>());
 
-		for (int i = 0; i < sqrt(n); i++)
+		int upper = sqrt(n)*log(n);
+		upper = min(upper, n/10);
+
+		for (int i = 0; i < n && sample_index_set.size()<upper; i++)
 		{
 			pair<double, int> x = density_sorted[i];
 			int idx = x.second;
