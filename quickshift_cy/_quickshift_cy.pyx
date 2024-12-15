@@ -15,17 +15,15 @@ ctypedef fused np_floats:
     cnp.float32_t
     cnp.float64_t
 
-def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
+def _quickshift_cython(np_floats[:, :] data, np_floats kernel_size,
                        np_floats max_dist, bint return_tree, int rng):
-    """Segments image using quickshift clustering in Color-(x,y) space.
-
-    Produces an oversegmentation of the image using the quickshift mode-seeking
-    algorithm.
+    """
+    Clusters data using quickshift.
 
     Parameters
     ----------
-    image : (M, N, C) ndarray
-        Input image.
+    data : (M, N, C) ndarray
+        Input data.
     kernel_size : float
         Width of Gaussian kernel used in smoothing the
         sample density. Higher means fewer clusters.
@@ -54,19 +52,14 @@ def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
     else:
         dtype = np.float32
 
-    # TODO join orphaned roots?
-    # Some nodes might not have a point of higher density within the
-    # search window. We could do a global search over these in the end.
-    # Reference implementation doesn't do that, though, and it only has
-    # an effect for very high max_dist.
 
     # window size for neighboring pixels to consider
     cdef np_floats inv_kernel_size_sqr = -0.5 / (kernel_size * kernel_size)
     cdef int kernel_width = <int>ceil(3 * kernel_size)
 
-    cdef Py_ssize_t height = image.shape[0]
-    cdef Py_ssize_t width = image.shape[1]
-    cdef Py_ssize_t channels = image.shape[2]
+    cdef Py_ssize_t height = data.shape[0]
+    cdef Py_ssize_t width = data.shape[1]
+    cdef Py_ssize_t channels = data.shape[1]
 
     cdef np_floats[:, ::1] densities = np.zeros((height, width), dtype=dtype)
 
@@ -86,7 +79,7 @@ def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
 
     # compute densities
     with nogil:
-        current_pixel_ptr = &image[0, 0, 0]
+        current_pixel_ptr = &data[0, 0, 0]
         for r in range(height):
             r_min = max(r - kernel_width, 0)
             r_max = min(r + kernel_width + 1, height)
@@ -98,7 +91,7 @@ def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
                         dist = 0
                         for channel in range(channels):
                             t = (current_pixel_ptr[channel] -
-                                 image[r_, c_, channel])
+                                 data[r_, c_, channel])
                             dist += t * t
                         t = r - r_
                         dist += t * t
@@ -108,7 +101,7 @@ def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
                 current_pixel_ptr += channels
 
         # find nearest node with higher density
-        current_pixel_ptr = &image[0, 0, 0]
+        current_pixel_ptr = &data[0, 0, 0]
         for r in range(height):
             r_min = max(r - kernel_width, 0)
             r_max = min(r + kernel_width + 1, height)
@@ -126,7 +119,7 @@ def _quickshift_cython(np_floats[:, :, ::1] image, np_floats kernel_size,
                             # (width * height * windowsize**2)
                             for channel in range(channels):
                                 t = (current_pixel_ptr[channel] -
-                                     image[r_, c_, channel])
+                                     data[r_, c_, channel])
                                 dist += t * t
                             t = r - r_
                             dist += t * t
