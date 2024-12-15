@@ -16,7 +16,7 @@ from cpp import qs
 def cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, output_csv, __dir):
     # Initialize a DataFrame to store results
 
-    for file_path in file_paths:
+    for file_path_idx, file_path in enumerate(file_paths):
         # Read the dataset
         # data = pd.read_csv(file_path)
 
@@ -38,7 +38,7 @@ def cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, 
                 clustering = algo(n_clusters=len(np.unique(true_labels))).fit(X_scaled)
             elif(algo_name=="DBSCAN"):
                 _eps = estimate_bandwidth(X_scaled, n_samples=min(1000,len(X_scaled)))
-                clustering = algo(eps = _eps).fit(X_scaled)
+                clustering = algo(eps = _eps, min_samples=5).fit(X_scaled)
             else:
                 _eps = estimate_bandwidth(X_scaled, n_samples=min(1000,len(X_scaled)))
                 clustering = algo(bandwidth = _eps).fit(X_scaled)
@@ -51,9 +51,12 @@ def cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, 
             ari = adjusted_rand_score(true_labels, predicted_labels)
 
             # Append results to the DataFrame
-            res = pd.read_csv(__dir+algo_name+output_csv)
+            try:
+                res = pd.read_csv(__dir+algo_name+output_csv)
+            except:
+                res = pd.DataFrame(columns=["Dataset", "Algorithm", "AMI", "ARI", "Time"])
             results_df = pd.concat([res, pd.DataFrame({
-                "Dataset": [file_path],
+                "Dataset": [file_path_idx],
                 "Algorithm": [algo_name],
                 "AMI": [ami],
                 "ARI": [ari],
@@ -78,15 +81,17 @@ if __name__ == "__main__":
 
     # Define clustering algorithms
     clustering_algorithms = {
-        "KMeans": KMeans(random_state=42),
-        "DBSCAN": DBSCAN(min_samples=5),
-        "MeanShift": MeanShift(),
-        "QuickShift": QuickShift()
+        "KMeans": KMeans,
+        "DBSCAN": DBSCAN,
+        "MeanShift": MeanShift,
+        "QuickShift": QuickShift
     }
 
     # Output CSV file to save results
     output_csv = "_clustering_results.csv"
     result_dir = "./results/"
+    
+    print("HERE")
 
     # Apply clustering and evaluate results
     cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, output_csv, result_dir)

@@ -288,4 +288,4 @@ class QuickShift():
             quick_shift(np.array(data), tau=self.tau, window_type=self.window_type,
                         bandwidth=self.bandwidth, metric=self.metric)
 
-        return self.labels_
+        return self
