@@ -1,30 +1,32 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import glob
+
 from math import log
 from copy import copy
 from time import time
+
 from sklearn.cluster import KMeans, MeanShift, DBSCAN, estimate_bandwidth
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_iris, load_wine, load_digits
 
 from quickshift import QuickShift
-from cpp import qs
+from fastqs import _lsh_quickshift
 
-# Function to apply clustering algorithms and evaluate results
-def cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, output_csv, __dir):
+class DATA:
+    def __init__(self, name, data, target):
+        self.name = name
+        self.data = data
+        self.target = target
+
+def __evaluate(dataset, clustering_algorithms, output_csv):
     # Initialize a DataFrame to store results
 
-    for file_path_idx, file_path in enumerate(file_paths):
-        # Read the dataset
-        # data = pd.read_csv(file_path)
-
-        # Separate features and true labels
-        # X = data.drop(columns=[true_labels_column])
-        # true_labels = data[true_labels_column]
-        X = file_path.data
-        true_labels = file_path.target
+    for i, data in enumerate(dataset):
+        X = data.data
+        true_labels = data.target
 
         # Standardize the features
         scaler = StandardScaler()
@@ -37,61 +39,88 @@ def cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, 
             if(algo_name=="KMeans"):
                 clustering = algo(n_clusters=len(np.unique(true_labels))).fit(X_scaled)
             elif(algo_name=="DBSCAN"):
+                if(data.name[0]=='m'):
+                    continue
                 _eps = estimate_bandwidth(X_scaled, n_samples=min(1000,len(X_scaled)))
-                clustering = algo(eps = _eps, min_samples=5).fit(X_scaled)
+                clustering = algo(eps = _eps, min_samples=int(X.shape[0]**0.5)).fit(X_scaled)
+            elif(algo_name=="LSH-QuickShift"):
+                clustering = algo(X_scaled, c=2)
             else:
+                if(data.name[0]=='m'):
+                    continue
                 _eps = estimate_bandwidth(X_scaled, n_samples=min(1000,len(X_scaled)))
                 clustering = algo(bandwidth = _eps).fit(X_scaled)
-
             t2 = time()-t1
-            predicted_labels = clustering.labels_
 
+            if(algo_name!="LSH-QuickShift"):
+                predicted_labels = clustering.labels_
+            else:
+                predicted_labels = clustering
+            
             # Calculate AMI and ARI
             ami = adjusted_mutual_info_score(true_labels, predicted_labels)
             ari = adjusted_rand_score(true_labels, predicted_labels)
 
             # Append results to the DataFrame
             try:
-                res = pd.read_csv(__dir+algo_name+output_csv)
+                res = pd.read_csv(output_csv)
             except:
-                res = pd.DataFrame(columns=["Dataset", "Algorithm", "AMI", "ARI", "Time"])
+                res = pd.DataFrame(columns=["Dataset", "n", "D", "C", "Algorithm", "AMI", "ARI", "Time"])
             results_df = pd.concat([res, pd.DataFrame({
-                "Dataset": [file_path_idx],
+                "Dataset": [data.name],
+                "n": [X.shape[0]],
+                "D": [X.shape[1]],
+                "C": [len(np.unique(true_labels))],
                 "Algorithm": [algo_name],
                 "AMI": [ami],
                 "ARI": [ari],
                 "Time": [t2]
             })], ignore_index=True)
 
-            # Save the results to a CSV file
-            results_df.to_csv(__dir+algo_name+output_csv, index=False)
-            print(f"Results saved to {algo_name+output_csv}")
+            results_df.to_csv(output_csv, index=False)
+            print(f"{data.name} results on {algo_name} is saved to {output_csv}.")
 
-# Example usage
+
+
+def read_csv(__dir):
+    data = []
+    for file_name in glob.glob(__dir+'*.csv'):
+        x = pd.read_csv(file_name)
+        X = (x.iloc[:,:-1]).to_numpy()
+        y = (x.iloc[:,-1:]).to_numpy()
+        u, y = np.unique(y, return_inverse=True)
+        data.append(DATA(file_name[7:-4], X, y))
+
+    for file_name in glob.glob(__dir+'*.t'):
+        x = pd.read_csv(file_name, sep='\t')
+        X = (x.iloc[:,:-1]).to_numpy()
+        y = (x.iloc[:,-1:]).to_numpy()
+        u, y = np.unique(y, return_inverse=True)
+        data.append(DATA(file_name[7:-4], X, y))
+    return data
+
+
+
 if __name__ == "__main__":
-    # List of CSV file paths
-    file_paths = [
-        load_iris(),
-        load_wine(),
-        load_digits(),
+    data = [
+        DATA('iris', load_iris().data, load_iris().target),
+        DATA('digits', load_digits().data, load_digits().target),
     ]
-
-    # Column name for true labels
-    true_labels_column = "true_labels"
+    data += read_csv('./data/')
 
     # Define clustering algorithms
     clustering_algorithms = {
         "KMeans": KMeans,
         "DBSCAN": DBSCAN,
         "MeanShift": MeanShift,
-        "QuickShift": QuickShift
+        "QuickShift": QuickShift,
+        "LSH-QuickShift": _lsh_quickshift
     }
 
     # Output CSV file to save results
-    output_csv = "_clustering_results.csv"
-    result_dir = "./results/"
+    output_suffix = "results.csv"
     
     print("HERE")
 
     # Apply clustering and evaluate results
-    cluster_and_evaluate(file_paths, true_labels_column, clustering_algorithms, output_csv, result_dir)
+    __evaluate(data, clustering_algorithms, output_suffix)

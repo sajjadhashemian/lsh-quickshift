@@ -50,14 +50,32 @@ def fast_quickshift(
     
     segment_mask = qs.fast_lsh_quickshift(image, k, _k)
     segment_mask = np.array(segment_mask)
-    # counter = 0
-    # cluster_index = dict({})
-    # for i, x in enumerate(segment_mask):
-    #     if(x not in cluster_index.keys()):
-    #         cluster_index[x] = counter
-    #         counter += 1
-    #     segment_mask[i] =  cluster_index[x]
     u, segment_mask = np.unique(segment_mask,  return_inverse=True)
     segment_mask = np.reshape(segment_mask, newshape=__shape)
 
     return segment_mask
+
+
+def _lsh_quickshift(
+    data,
+    k=None,
+    _k=None,
+    c = 2,
+):
+    data = np.ascontiguousarray(data)
+    
+    if(k == None):
+        k = min(int(log(data.shape[0])**c), int(data.shape[0]/2))
+
+    if(_k == None):
+        _k = min(int(log(data.shape[0]**0.5)**c), int(data.shape[0]**0.5/2))
+    
+    if(data.shape[0]>5000):
+        labels_ = qs.fast_lsh_quickshift(data, k, _k)
+    else:
+        labels_ = qs.lsh_quickshift(data, k)
+        
+    labels_ = np.array(labels_)
+    u, labels_ = np.unique(labels_,  return_inverse=True)
+
+    return labels_
