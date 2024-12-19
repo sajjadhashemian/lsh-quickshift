@@ -15,9 +15,14 @@ from skimage.util import img_as_float
 from skimage import io, color
 
 from fastqs import fast_quickshift
+from sklearn.cluster import estimate_bandwidth, MeanShift
 
-t=[]
-t.append(time())
+class RESULT:
+    def __init__(self, algo_name, lable, t, img):
+        self.name = algo_name
+        self.lable = lable
+        self.t = t
+        self.img = img
 
 def color_segmentes(image, labels):
     labels = labels.astype(int)
@@ -31,45 +36,67 @@ def read_image(name):
     img = img_as_float(img[::4, ::4])
     return img
 
-def __plot(img, segments_fz, segments_slic, segments_quick, segments_watershed, segments_qs):
-    fig, ax = plt.subplots(3, 2, figsize=(10, 10), sharex=True, sharey=True)
-
-    ax[0, 0].imshow(color_segmentes(img, segments_fz))
-    ax[0, 0].set_title("Felzenszwalbs's method")
-    ax[0, 1].imshow(color_segmentes(img, segments_slic))
-    ax[0, 1].set_title('SLIC')
-    ax[1, 0].imshow(color_segmentes(img, segments_quick))
-    ax[1, 0].set_title('Quickshift')
-    ax[1, 1].imshow(color_segmentes(img, segments_watershed))
-    ax[1, 1].set_title('Compact watershed')
-    ax[2, 0].imshow(color_segmentes(img, segments_qs))
-    ax[2, 0].set_title('LSH Quickshift')
-    ax[2, 1].imshow(img)
-    ax[2, 1].set_title('Original Image')
+def __plot(res):
+    fig, ax = plt.subplots(len(res), 7, figsize=(12, len(res)+1), sharex=True, sharey=True)
+    
+    for row, img in enumerate(res):
+        ax[row, 0].imshow(img[0].img, aspect='equal')
+        ax[row, 0].set_title('Original Image', fontsize=7)
+        for col, alg in enumerate(res[row]):
+            ax[row, col+1].imshow(color_segmentes(img, alg.lable), aspect='equal')
+            ax[row, col+1].set_title(f'{alg.name}, #: {len(np.unique(alg.lable))}, (s): {alg.t:.2f}', fontsize=7)
 
     for a in ax.ravel():
         a.set_axis_off()
-
     plt.tight_layout()
-    plt.show()
+    plt.savefig('segmentation.svg')
+    # plt.show()
 
 
 def segment(img, _c):
+    t, res = [], []
+
+    t.append(time())    
     segments_fz = felzenszwalb(img, scale=100, sigma=0.5, min_size=50)
-    segments_slic = slic(img, n_segments=250, compactness=10, sigma=1, start_label=1)
-    segments_quick = quickshift(img, kernel_size=6, max_dist=6, ratio=0.5)
-    gradient = sobel(rgb2gray(img))
-    segments_watershed = watershed(gradient, markers=250, compactness=0.001)
+    t.append(time()-t[-1])
+    res.append(RESULT('Felzenszwalb', segments_fz, t[-1], img))
+
+    t.append(time())
+    segments_watershed = watershed(sobel(rgb2gray(img)), markers=25, compactness=0.001)
+    t.append(time()-t[-1])
+    res.append(RESULT('Watershed', segments_watershed, t[-1], img))
+
+    t.append(time())    
+    segments_slic = slic(img, n_segments=30, compactness=10, sigma=1, start_label=1)
+    t.append(time()-t[-1])
+    res.append(RESULT('SLIC', segments_slic, t[-1], img))
+
+    t.append(time())    
+    segments_quick = quickshift(img, kernel_size=6, max_dist=8, ratio=0.5)
+    t.append(time()-t[-1])
+    res.append(RESULT('Quickshift', segments_quick, t[-1], img))
+
+    t.append(time())
     segments_qs = fast_quickshift(img, c = _c, ratio=0.5, sigma=1.5)
+    t.append(time()-t[-1])
+    res.append(RESULT('LSH-Quickshift', segments_qs, t[-1], img))
 
-    print(f'Felzenszwalb number of segments: {len(np.unique(segments_fz))}')
-    print(f'SLIC number of segments: {len(np.unique(segments_slic))}')
-    print(f'Quickshift number of segments: {len(np.unique(segments_quick))}')
-    print(f'Watershed number of segments: {len(np.unique(segments_watershed))}')
-    print(f'LSH Quickshift number of segments: {len(np.unique(segments_qs))}')
+    t.append(time())
+    image = np.reshape(img, (-1,3))
+    segments_ms = MeanShift(bandwidth = estimate_bandwidth(image, n_samples=100)/2, bin_seeding=True, max_iter=400).fit(image)
+    segments_ms = np.reshape(segments_ms.labels_, (img.shape[0], img.shape[1]))
+    t.append(time()-t[-1])
+    res.append(RESULT('Meanshift', segments_ms, t[-1], img))
 
-    __plot(img, segments_fz, segments_slic, segments_quick, segments_watershed, segments_qs)
+    return res
 
 if __name__=="__main__":
-    img = read_image(4)
-    segment(img, 1.2)
+    images = [img_as_float(coffee()[::4, ::4])]
+    for i in range(9):
+        images.append(read_image(i+1))
+    res = []
+    for i, img in enumerate(images):
+        print(i)
+        res.append(segment(img, 1.3))
+    
+    __plot(res)
