@@ -1,3 +1,0 @@
-/Users/sa/opt/lsh-quickshift/cpp/build/CMakeFiles/qs.dir
-/Users/sa/opt/lsh-quickshift/cpp/build/CMakeFiles/edit_cache.dir
-/Users/sa/opt/lsh-quickshift/cpp/build/CMakeFiles/rebuild_cache.dir
