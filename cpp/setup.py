@@ -6,11 +6,11 @@ ext_modules = [
     Pybind11Extension(
         "qs",  # Name of the module
         ["qs.cpp"],  # Source file(s)
-        include_dirs=["/opt/anaconda3/envs/faiss_env/include"],  # Include directories
-        library_dirs=["/opt/anaconda3/envs/faiss_env/lib"],  # Library directories
+        include_dirs=["/opt/anaconda3/envs/faiss/include"],  # Include directories
+        library_dirs=["/opt/anaconda3/envs/faiss/lib"],  # Library directories
         libraries=["faiss"],  # Libraries to link
         extra_compile_args=["-std=c++17"],  # C++ standard
-        extra_link_args=["-Wl,-rpath,/opt/anaconda3/envs/faiss_env/lib"],  # Add rpath
+        extra_link_args=["-Wl,-rpath,/opt/anaconda3/envs/faiss/lib"],  # Add rpath
     )
 ]
 
